@@ -1,30 +1,29 @@
-name: Deploy to EC2
+name: Deploy to EC2 via AWS CLI
 
 on:
   push:
     branches:
-      - main
+      - main  # Change to your deployment branch if needed
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-      USER_NAME: ${{ secrets.EC2_USER }}
-      HOSTNAME: ${{ secrets.EC2_HOST }}
 
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Setup SSH Key
+      - name: Configure AWS CLI
         run: |
-          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_ACCESS_SECRET }}
+          aws configure set region ${{ secrets.AWS_REGION }}
 
-      - name: Deploy to EC2 and Remove index.html
+      - name: Upload Files to EC2 Using SSM
         run: |
-          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} << 'EOF'
-          rm -f /usr/share/nginx/html/index.html  # Delete existing index.html
-          EOF
-
-          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no -i private_key" ./ ${USER_NAME}@${HOSTNAME}:/usr/share/nginx/html/
+          aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --targets "Key=instanceIds,Values=${{ secrets.EC2_INSTANCE_ID }}" \
+            --parameters 'commands=["sudo rm -f /usr/share/nginx/html/index.html", "sudo aws s3 cp s3://oym2025bucket/pullo/ /usr/share/nginx/html/ --recursive"]' \
+            --comment "Deploy new code" \
+            --output text
