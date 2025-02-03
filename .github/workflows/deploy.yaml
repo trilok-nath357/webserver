@@ -25,6 +25,6 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} << 'EOF'
           rm -f /usr/share/nginx/html/index.html  # Delete existing index.html
-EOF
+          EOF
 
           rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no -i private_key" ./ ${USER_NAME}@${HOSTNAME}:/usr/share/nginx/html/
