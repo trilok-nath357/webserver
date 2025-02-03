@@ -1,0 +1,17 @@
+name: Welcome Message
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+  workflow_dispatch:
+
+jobs:
+  welcome:
+    runs-on: self-hosted
+    steps:
+      - name: Print Welcome Message
+        run: echo "🎉 Welcome to the project! Thank you for contributing!"
