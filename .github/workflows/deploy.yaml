@@ -3,10 +3,15 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - main 
+      - main
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+      USER_NAME: ${{ secrets.EC2_USER }}
+      HOSTNAME: ${{ secrets.EC2_HOST }}
 
     steps:
       - name: Checkout repository
@@ -14,15 +19,12 @@ jobs:
 
       - name: Setup SSH Key
         run: |
-          sudo mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          sudo chmod 600 ~/.ssh/id_rsa
-          sudo ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+          echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
 
       - name: Deploy to EC2 and Remove index.html
         run: |
-          sudo ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-          sudo rm -f /usr/share/nginx/html/index.html  # Delete existing index.html
-          EOF
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER_NAME}@${HOSTNAME} << 'EOF'
+          rm -f /usr/share/nginx/html/index.html  # Delete existing index.html
+EOF
 
-          sudo rsync -avz --delete ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/usr/share/nginx/html/
+          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no -i private_key" ./ ${USER_NAME}@${HOSTNAME}:/usr/share/nginx/html/
